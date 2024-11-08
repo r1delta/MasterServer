@@ -58,7 +58,6 @@ app.post("/server/heartbeat", async (req: Request, res: Response) => {
     res.status(200).send("Update data");
     return;
   }
-
   app.locals.serverData.push(json);
   console.log("local", app.locals.serverData);
   try {
