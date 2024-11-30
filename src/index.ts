@@ -1,5 +1,7 @@
 import express from "express";
 import { z } from "zod";
+import { Request, Response } from "express";
+
 const app = express();
 
 app.get("/", (req, res) => {
@@ -40,15 +42,28 @@ const schema = z.object({
   ),
 });
 
-import { Request, Response } from "express";
-
 const serverData: z.infer<typeof schema>[] = [];
 app.locals.serverData = serverData;
+
+app.delete("/server/remove", async (req: Request, res: Response) => {
+  const json = req.query;
+  const id = json.id;
+  console.log("remmoving server with id: ", id);
+  const index = app.locals.serverData.findIndex((entry) => entry.id === id);
+  if (index === -1) {
+    res.status(404).send("Server not found");
+    return;
+  }
+  app.locals.serverData.splice(index, 1);
+  res.send("OK");
+});
+
 app.post("/server/heartbeat", async (req: Request, res: Response) => {
   const json = req.body;
   const ip = req.socket.remoteAddress;
   const ip_str = ip.replace(/^.*:/, "");
   json.ip = ip_str;
+  console.log(json);
   if (app.locals.serverData.some((entry) => entry.id === json.id)) {
     // make sure to return a 400 status code if the data is a duplicate, and update the data to be correct
     const duplicateIndex = app.locals.serverData.findIndex(
@@ -58,18 +73,19 @@ app.post("/server/heartbeat", async (req: Request, res: Response) => {
     res.status(200).send("Update data");
     return;
   }
-  app.locals.serverData.push(json);
-  console.log("local", app.locals.serverData);
-  try {
-    const data = schema.parse(json);
-    // compare data to serverData list and filter out duplicates
-    console.log(data);
-  } catch (error) {
-    // console.error(error);
-    res.status(400).send("Invalid data");
+
+  // if the ip & port is already in the list, then update the data
+  const duplicateIndex = app.locals.serverData.findIndex(
+    (entry) => entry.ip === json.ip && entry.port === json.port
+  );
+
+  if (duplicateIndex !== -1) {
+    app.locals.serverData[duplicateIndex] = json;
+    res.status(200).send("Update data");
     return;
   }
 
+  app.locals.serverData.push(json);
   res.send("OK");
 });
 
