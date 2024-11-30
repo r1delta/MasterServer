@@ -1,5 +1,4 @@
 import express from "express";
-import { z } from "zod";
 import { Request, Response } from "express";
 
 const app = express();
@@ -10,45 +9,12 @@ app.get("/", (req, res) => {
 
 app.use(express.json());
 
-interface Heartbeat {
-  type: string;
-  hostname: string;
-  map_name: string;
-  game_mode: string;
-  players: Player[];
-}
-
-interface Player {
-  name: string;
-  gen: number;
-  level: number;
-  team: number;
-}
-
-const schema = z.object({
-  type: z.string(),
-  hostname: z.string(),
-  map_name: z.string(),
-  game_mode: z.string(),
-  ip: z.string(),
-  port: z.number(),
-  players: z.array(
-    z.object({
-      name: z.string(),
-      gen: z.number(),
-      level: z.number(),
-      team: z.number(),
-    })
-  ),
-});
-
-const serverData: z.infer<typeof schema>[] = [];
+const serverData = [];
 app.locals.serverData = serverData;
 
 app.delete("/server/remove", async (req: Request, res: Response) => {
   const json = req.query;
   const id = json.id;
-  console.log("remmoving server with id: ", id);
   const index = app.locals.serverData.findIndex((entry) => entry.id === id);
   if (index === -1) {
     res.status(404).send("Server not found");
