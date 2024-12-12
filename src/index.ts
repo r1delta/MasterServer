@@ -24,6 +24,13 @@ app.delete("/server/remove", async (req: Request, res: Response) => {
   res.send("OK");
 });
 
+function printHeaders(req: Request) {
+  console.log("Headers");
+  console.log(req.headers);
+  console.log("IP");
+  console.log(req.socket.remoteAddress);
+}
+
 app.post("/server/heartbeat", async (req: Request, res: Response) => {
   const json = req.body;
   const ip = req.socket.remoteAddress;
@@ -33,6 +40,7 @@ app.post("/server/heartbeat", async (req: Request, res: Response) => {
   // if the ip starts with 127.0
   if (ip_str.startsWith("172")) {
     console.log("IP is 172");
+    printHeaders(req);
     console.log(req.headers["X-Real-IP"]);
     if (req.headers["X-Real-IP"]) {
       const realIp = req.headers["X-Real-IP"] as string;
