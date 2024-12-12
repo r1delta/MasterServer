@@ -41,9 +41,9 @@ app.post("/server/heartbeat", async (req: Request, res: Response) => {
   if (ip_str.startsWith("172")) {
     console.log("IP is 172");
     printHeaders(req);
-    console.log(req.headers["X-Real-IP"]);
-    if (req.headers["X-Real-IP"]) {
-      const realIp = req.headers["X-Real-IP"] as string;
+    console.log(req.headers["x-real-ip"]);
+    if (req.headers["x-real-ip"]) {
+      const realIp = req.headers["x-real-ip"] as string;
       json.ip = realIp.replace(/^.*:/, "");
     }
   } else {
