@@ -36,7 +36,7 @@ app.post("/server/heartbeat", async (req: Request, res: Response) => {
   const ip = req.socket.remoteAddress;
 
   const ip_str = ip.replace(/^.*:/, "");
-
+  json.ip = ip_str;
   // if the ip starts with 127.0
   if (ip_str.startsWith("172")) {
     console.log("IP is 172");
@@ -44,14 +44,9 @@ app.post("/server/heartbeat", async (req: Request, res: Response) => {
     console.log(req.headers["x-real-ip"]);
     if (req.headers["x-real-ip"]) {
       const realIp = req.headers["x-real-ip"] as string;
-      json.ip = realIp.replace(/^.*:/, "");
+      json.ip = realIp;
     }
-  } else {
-    json.ip = ip_str;
   }
-
-  json.ip = ip_str;
-  console.log(json);
   if (app.locals.serverData.some((entry) => entry.id === json.id)) {
     // make sure to return a 400 status code if the data is a duplicate, and update the data to be correct
     const duplicateIndex = app.locals.serverData.findIndex(
