@@ -8,7 +8,7 @@ app.get("/", (req, res) => {
 });
 
 app.use(express.json());
-
+app.set("trust proxy", true);
 const serverData = [];
 app.locals.serverData = serverData;
 
