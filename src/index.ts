@@ -31,8 +31,9 @@ app.post("/server/heartbeat", async (req: Request, res: Response) => {
   const ip_str = ip.replace(/^.*:/, "");
 
   // if the ip starts with 127.0
-  if (ip_str.startsWith("127")) {
-    json.ip = "localhost";
+  if (ip_str.startsWith("172")) {
+    console.log("IP is 172");
+    console.log(req.headers["X-Real-IP"]);
     if (req.headers["X-Real-IP"]) {
       const realIp = req.headers["X-Real-IP"] as string;
       json.ip = realIp.replace(/^.*:/, "");
