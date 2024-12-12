@@ -27,7 +27,20 @@ app.delete("/server/remove", async (req: Request, res: Response) => {
 app.post("/server/heartbeat", async (req: Request, res: Response) => {
   const json = req.body;
   const ip = req.socket.remoteAddress;
+
   const ip_str = ip.replace(/^.*:/, "");
+
+  // if the ip starts with 127.0
+  if (ip_str.startsWith("127.0")) {
+    json.ip = "localhost";
+    if (req.headers["X-Real-IP"]) {
+      const realIp = req.headers["X-Real-IP"] as string;
+      json.ip = realIp.replace(/^.*:/, "");
+    }
+  } else {
+    json.ip = ip_str;
+  }
+
   json.ip = ip_str;
   console.log(json);
   if (app.locals.serverData.some((entry) => entry.id === json.id)) {
