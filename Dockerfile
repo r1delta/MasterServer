@@ -15,7 +15,7 @@ RUN useradd -r -s /bin/false r1ms
 
 # Install OpenSSL and CA certificates (needed for HTTPS)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates libssl1.1 \
+    && apt-get install -y --no-install-recommends ca-certificates libssl1.1 pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
