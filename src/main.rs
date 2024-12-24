@@ -62,7 +62,6 @@ async fn main() -> std::io::Result<()> {
             .app_data(heartbeat_rate_limiter.clone())
             .app_data(server_list_rate_limiter.clone())
             .app_data(server_delete_rate_limiter.clone())
-            .route("/", web::get().to(handlers::index))
             .route("/server/heartbeat", web::post().to(handlers::heartbeat::handle_heartbeat))
             .route("/server/", web::get().to(handlers::servers::get_servers))
             .route("/server/delete", web::post().to(handlers::servers::delete_server))
