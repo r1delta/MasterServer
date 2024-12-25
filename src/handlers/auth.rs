@@ -45,6 +45,7 @@ pub async fn handle_auth(
     // send a request to discord to get the token
     let client_id = "1304910395013595176";
 
+    let client_secret = "";
 
     let redirect_uri = "http://localhost/auth";
 
