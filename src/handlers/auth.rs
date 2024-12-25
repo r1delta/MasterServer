@@ -43,11 +43,11 @@ pub async fn handle_auth(
      */
 
     // send a request to discord to get the token
-    let client_id = "1304910395013595176";
+    let client_id = std::env::var("DISCORD_CLIENT_ID").unwrap();
 
-    let client_secret = "";
+    let client_secret = std::env::var("DISCORD_CLIENT_SECRET").unwrap().to_string();
 
-    let redirect_uri = "http://localhost/auth";
+    let redirect_uri = std::env::var("DISCORD_REDIRECT_URI").unwrap().to_string();
 
     let scope = "identify guilds.members.read";
 
@@ -58,10 +58,10 @@ pub async fn handle_auth(
             &[
                 ("client_id", client_id),
                 ("client_secret", client_secret),
-                ("grant_type", "authorization_code"),
-                ("code", code),
+                ("grant_type", "authorization_code".to_string()),
+                ("code", code.to_string()),
                 ("redirect_uri", redirect_uri),
-                ("scope", scope),
+                ("scope", scope.to_string()),
             ]
         )
         .send().await;
