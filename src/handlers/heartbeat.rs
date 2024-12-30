@@ -1,14 +1,14 @@
 // src/handlers/heartbeat.rs
-use actix_web::{web, HttpResponse, HttpRequest};
+use actix_web::{ web, HttpResponse, HttpRequest };
 use capnp::message::ReaderOptions;
-use log::{debug, error};
-use std::net::{IpAddr, SocketAddr};
+use log::{ debug, error };
+use std::net::{ IpAddr, SocketAddr };
 use crate::storage::memory::ServerStorage;
-use crate::models::server::{ServerInfo, Player};
+use crate::models::server::{ ServerInfo, Player };
 use crate::schema::server_heartbeat;
-use governor::{RateLimiter, clock::DefaultClock};
+use governor::{ RateLimiter, clock::DefaultClock };
 use governor::state::keyed::DefaultKeyedStateStore;
-use crate::utils::{extract_real_ip, format_address_for_challenge, RequestError, log_all_headers};
+use crate::utils::{ extract_real_ip, format_address_for_challenge, RequestError, log_all_headers };
 use tokio::net::UdpSocket;
 use rand::Rng;
 use std::fmt::Write;
@@ -44,10 +44,9 @@ pub async fn handle_heartbeat(
     }
 
     let mut slice = bytes.as_ref();
-    let reader = match capnp::serialize::read_message_from_flat_slice(
-        &mut slice,
-        ReaderOptions::new()
-    ) {
+    let reader = match
+        capnp::serialize::read_message_from_flat_slice(&mut slice, ReaderOptions::new())
+    {
         Ok(reader) => reader,
         Err(e) => {
             error!("Failed to read Cap'n Proto message: {}", e);
@@ -63,14 +62,14 @@ pub async fn handle_heartbeat(
         }
     };
 
-     let claimed_port = heartbeat.get_port();
+    let claimed_port = heartbeat.get_port();
 
     // Format address properly for challenge
     let socket_addr = match format_address_for_challenge(normalized_ip, claimed_port) {
         Ok(addr) => addr,
         Err(e) => {
             error!("Invalid server address: {}: {}", normalized_ip, e);
-             return Ok(HttpResponse::BadRequest().body(format!("Invalid server address: {}", e)));
+            return Ok(HttpResponse::BadRequest().body(format!("Invalid server address: {}", e)));
         }
     };
 
@@ -84,31 +83,42 @@ pub async fn handle_heartbeat(
     let game_mode = heartbeat.get_game_mode().unwrap_or("").to_string();
     let max_players = heartbeat.get_max_players();
     let port = heartbeat.get_port();
-    
+
     // Perform the data validation checks:
-     if hostname.is_empty() {
-       error!("Invalid hostname: Empty value");
-       return Ok(HttpResponse::BadRequest().body("Invalid hostname: Must be at least 1 char."));
-     }
+    if hostname.is_empty() {
+        error!("Invalid hostname: Empty value");
+        return Ok(HttpResponse::BadRequest().body("Invalid hostname: Must be at least 1 char."));
+    }
     if hostname.len() > 64 {
         error!("Invalid hostname: Too long. {}", hostname);
         return Ok(HttpResponse::BadRequest().body("Invalid hostname: Too long (max 64 chars)."));
     }
     if map_name.is_empty() {
-       error!("Invalid map_name: Empty value");
-       return Ok(HttpResponse::BadRequest().body("Invalid map_name: Must be at least 1 char."));
+        error!("Invalid map_name: Empty value");
+        return Ok(HttpResponse::BadRequest().body("Invalid map_name: Must be at least 1 char."));
     }
-    if map_name.len() > 32 || !map_name.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
+    if
+        map_name.len() > 32 ||
+        !map_name.chars().all(|c| (c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()))
+    {
         error!("Invalid map_name: {}, must be <= 32 chars, only a-z and underscore", map_name);
-        return Ok(HttpResponse::BadRequest().body("Invalid map_name: must be <= 32 chars, only a-z and underscore."));
+        return Ok(
+            HttpResponse::BadRequest().body(
+                "Invalid map_name: must be <= 32 chars, only a-z and underscore."
+            )
+        );
     }
-     if game_mode.is_empty() {
-       error!("Invalid game_mode: Empty value");
-       return Ok(HttpResponse::BadRequest().body("Invalid game_mode: Must be at least 1 char."));
+    if game_mode.is_empty() {
+        error!("Invalid game_mode: Empty value");
+        return Ok(HttpResponse::BadRequest().body("Invalid game_mode: Must be at least 1 char."));
     }
-    if game_mode.len() > 32 || !game_mode.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
-         error!("Invalid game_mode: {}, must be <= 32 chars, only a-z and underscore", game_mode);
-        return Ok(HttpResponse::BadRequest().body("Invalid game_mode: must be <= 32 chars, only a-z and underscore."));
+    if game_mode.len() > 32 || !game_mode.chars().all(|c| (c.is_ascii_lowercase() || c == '_')) {
+        error!("Invalid game_mode: {}, must be <= 32 chars, only a-z and underscore", game_mode);
+        return Ok(
+            HttpResponse::BadRequest().body(
+                "Invalid game_mode: must be <= 32 chars, only a-z and underscore."
+            )
+        );
     }
     if max_players >= 20 {
         error!("Invalid max_players: {}, must be less than 20", max_players);
@@ -123,11 +133,15 @@ pub async fn handle_heartbeat(
         Ok(player_list) => {
             let mut players = Vec::new();
             for player in player_list.iter() {
-                 let player_name = player.get_name().unwrap_or("").to_string();
-                  if player_name.is_empty() {
+                let player_name = player.get_name().unwrap_or("").to_string();
+                if player_name.is_empty() {
                     error!("Invalid player name: Empty value");
-                    return Ok(HttpResponse::BadRequest().body("Invalid player name: Must be at least 1 char."));
-                 }
+                    return Ok(
+                        HttpResponse::BadRequest().body(
+                            "Invalid player name: Must be at least 1 char."
+                        )
+                    );
+                }
                 players.push(Player {
                     name: player_name,
                     gen: player.get_gen(),
@@ -136,17 +150,14 @@ pub async fn handle_heartbeat(
                 });
             }
             players
-        },
+        }
         Err(e) => {
             error!("Failed to read players: {}", e);
             Vec::new()
         }
     };
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 
     let server_info = ServerInfo {
         id: uuid::Uuid::new_v4().to_string(),
@@ -177,7 +188,7 @@ async fn verify_challenge(server_addr: &SocketAddr) -> bool {
         write!(&mut nonce_str, "{:02X}", byte).unwrap();
     }
 
-    let mut challenge_packet: Vec<u8> = vec![0xFF, 0xFF, 0xFF, 0xFF, 0x48];
+    let mut challenge_packet: Vec<u8> = vec![0xff, 0xff, 0xff, 0xff, 0x48];
     challenge_packet.extend_from_slice(b"connect");
     challenge_packet.extend_from_slice(nonce_str.as_bytes());
     challenge_packet.push(0x00);
@@ -196,40 +207,64 @@ async fn verify_challenge(server_addr: &SocketAddr) -> bool {
             error!("Error sending challenge to {}: {}", server_addr, e);
             return false;
         }
-    };
+    }
 
     let mut buffer = [0u8; 1024];
-    match tokio::time::timeout(std::time::Duration::from_secs(2), async {
-        socket.recv_from(&mut buffer).await
-    }).await {
+    match
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            socket.recv_from(&mut buffer).await
+        }).await
+    {
         Ok(Ok((len, _addr))) => {
-            if len < 21 || buffer[0] != 0xFF || buffer[1] != 0xFF || buffer[2] != 0xFF || buffer[3] != 0xFF || buffer[4] != 0x49 {
+            if
+                len < 21 ||
+                buffer[0] != 0xff ||
+                buffer[1] != 0xff ||
+                buffer[2] != 0xff ||
+                buffer[3] != 0xff ||
+                buffer[4] != 0x49
+            {
                 error!("Received invalid challenge response from {} with len {}", server_addr, len);
                 return false;
             }
 
             let response_nonce_str = String::from_utf8_lossy(&buffer[16..26]);
             if !response_nonce_str.starts_with("0x") {
-                error!("Received invalid nonce format from {}, received: {}", server_addr, response_nonce_str);
+                error!(
+                    "Received invalid nonce format from {}, received: {}",
+                    server_addr,
+                    response_nonce_str
+                );
                 return false;
             }
             if response_nonce_str != nonce_str {
-                error!("Received invalid nonce from {}, sent: {}, received: {}", 
-                    server_addr, nonce_str, response_nonce_str);
+                error!(
+                    "Received invalid nonce from {}, sent: {}, received: {}",
+                    server_addr,
+                    nonce_str,
+                    response_nonce_str
+                );
                 return false;
             }
-             if String::from_utf8_lossy(&buffer[9..16]) != "connect" {
-                error!("Received invalid connect string from {}, received: {:?}", 
-                    server_addr, &buffer[9..16]);
+            if String::from_utf8_lossy(&buffer[9..16]) != "connect" {
+                error!(
+                    "Received invalid connect string from {}, received: {:?}",
+                    server_addr,
+                    &buffer[9..16]
+                );
                 return false;
             }
-            debug!("Received valid challenge response from {} with nonce: {}", server_addr, nonce_str);
+            debug!(
+                "Received valid challenge response from {} with nonce: {}",
+                server_addr,
+                nonce_str
+            );
             true
-        },
+        }
         Ok(Err(e)) => {
             error!("Failed to receive challenge response from {}: {}", server_addr, e);
             false
-        },
+        }
         Err(e) => {
             error!("Timed out receiving challenge response from {}: {}", server_addr, e);
             false
