@@ -15,6 +15,7 @@ use std::net::IpAddr;
 use governor::state::keyed::DefaultKeyedStateStore;
 use crate::config::Config;
 use log::info;
+use dotenv;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -34,6 +35,8 @@ async fn main() -> std::io::Result<()> {
 
     // Load configuration
     let config = Config::from_env();
+
+    dotenv::dotenv().ok();
 
     // Get bind address and port from environment or use defaults
     let bind_address = std::env::var("BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string());
@@ -62,7 +65,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(heartbeat_rate_limiter.clone())
             .app_data(server_list_rate_limiter.clone())
             .app_data(server_delete_rate_limiter.clone())
-            .route("/", web::get().to(handlers::index))
+            .route("/auth", web::get().to(handlers::auth::handle_auth))
             .route("/server/heartbeat", web::post().to(handlers::heartbeat::handle_heartbeat))
             .route("/server/", web::get().to(handlers::servers::get_servers))
             .route("/server/delete", web::post().to(handlers::servers::delete_server))
