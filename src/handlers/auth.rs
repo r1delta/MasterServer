@@ -50,7 +50,7 @@ pub async fn handle_auth(
 
     let redirect_uri = std::env::var("DISCORD_REDIRECT_URI").unwrap().to_string();
 
-    let scope = "identify guilds.members.read";
+    let scope = "guilds.members.read";
 
     let token_response = reqwest::Client
         ::new()
@@ -85,6 +85,22 @@ pub async fn handle_auth(
         }
     };
 
+    let refresh_token = match token_response.get("refresh_token") {
+        Some(t) => t,
+        None => {
+            error!("Failed to get refresh token from discord response");
+            return Err(RequestError::AuthFailed);
+        }
+    };
+
+    let token_time = match token_response.get("expires_in") {
+        Some(t) => t,
+        None => {
+            error!("Failed to get token time from discord response");
+            return Err(RequestError::AuthFailed);
+        }
+    };
+
     let token = match token_response.get("access_token") {
         Some(t) => t,
         None => {
@@ -93,38 +109,12 @@ pub async fn handle_auth(
         }
     };
 
-    println!("Token: {}", token);
-    let user_info = reqwest::Client
-        ::new()
-        .get("https://discord.com/api/users/@me")
-        .bearer_auth(token.as_str().unwrap())
-        .send().await;
-
     // get user info
     let guild_info = reqwest::Client
         ::new()
         .get("https://discord.com/api/users/@me/guilds/1186901921567617115/member")
         .bearer_auth(token.as_str().unwrap())
         .send().await;
-
-    let user_info = match user_info {
-        Ok(r) => r,
-        Err(e) => {
-            error!("Failed to get user info from discord: {}", e);
-            return Err(RequestError::AuthFailed);
-        }
-    };
-    println!("User info: {:?}", user_info);
-
-    let json = user_info.json::<serde_json::Value>().await;
-
-    let json = match json {
-        Ok(j) => j,
-        Err(e) => {
-            error!("Failed to parse user info: {}", e);
-            return Err(RequestError::AuthFailed);
-        }
-    };
 
     let guild_info = match guild_info {
         Ok(r) => r,
@@ -146,8 +136,11 @@ pub async fn handle_auth(
 
     println!("Guild info: {:?}", guild_info);
 
+    if !guild_info.get("roles").is_some() {
+        return Ok(HttpResponse::BadRequest().body("You are not in the correct guild"));
+    }
+
     // strip guild roles and id from user info
-    let mut guild_id = String::new();
     let mut discord_id = String::new();
 
     let mut roles = Vec::new();
@@ -157,13 +150,27 @@ pub async fn handle_auth(
     }
     // guild info is for one guild and roles is an array in it so get the roles key
 
-    if let Some(id) = json.get("id") {
+    if let Some(id) = guild_info.get("user").unwrap().get("id") {
         discord_id = id.as_str().unwrap().to_string();
     }
 
-    println!("Guild ID: {}", guild_id);
+    // check for 1214775914836008990 playtester role
+
+    if !roles.contains(&"1214775914836008990".to_string()) {
+        return Ok(HttpResponse::BadRequest().body("Please verify on the R1Delta discord"));
+    }
+
     println!("Discord ID: {}", discord_id);
     println!("Roles: {:?}", roles);
 
-    Ok(HttpResponse::Ok().finish())
+    let username = match guild_info.get("user").unwrap().get("username") {
+        Some(u) => u.as_str().unwrap(),
+        None => {
+            return Ok(HttpResponse::BadRequest().body("Failed to get username from discord"));
+        }
+    };
+
+    println!("Username: {}", username);
+
+    Ok(HttpResponse::Ok().body("ok"))
 }
