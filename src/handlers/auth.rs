@@ -1,6 +1,7 @@
 use actix_web::{ web, HttpResponse, HttpRequest };
 use capnp::message::ReaderOptions;
 use log::{ debug, error };
+use serde_json::json;
 use std::net::{ IpAddr, SocketAddr };
 use crate::storage::memory::ServerStorage;
 use crate::models::server::{ ServerInfo, Player };
@@ -97,15 +98,14 @@ pub async fn handle_auth(
         ::new()
         .get("https://discord.com/api/users/@me")
         .bearer_auth(token.as_str().unwrap())
-
         .send().await;
 
     // get user info
-    // let guild_info = reqwest::Client
-    //     ::new()
-    //     .get("https://discord.com/api/users/@me/guilds/1186901921567617115/member")
-    //     .bearer_auth(token.as_str().unwrap())
-    //     .send().await;
+    let guild_info = reqwest::Client
+        ::new()
+        .get("https://discord.com/api/users/@me/guilds/1186901921567617115/member")
+        .bearer_auth(token.as_str().unwrap())
+        .send().await;
 
     let user_info = match user_info {
         Ok(r) => r,
@@ -126,5 +126,44 @@ pub async fn handle_auth(
         }
     };
 
-    Ok(HttpResponse::Ok().json(json))
+    let guild_info = match guild_info {
+        Ok(r) => r,
+        Err(e) => {
+            error!("Failed to get guild info from discord: {}", e);
+            return Err(RequestError::AuthFailed);
+        }
+    };
+
+    let guild_info = guild_info.json::<serde_json::Value>().await;
+
+    let guild_info = match guild_info {
+        Ok(j) => j,
+        Err(e) => {
+            error!("Failed to parse guild info: {}", e);
+            return Err(RequestError::AuthFailed);
+        }
+    };
+
+    println!("Guild info: {:?}", guild_info);
+
+    // strip guild roles and id from user info
+    let mut guild_id = String::new();
+    let mut discord_id = String::new();
+
+    let mut roles = Vec::new();
+    let role_vec = guild_info.get("roles").unwrap().as_array().unwrap();
+    for role in role_vec {
+        roles.push(role.as_str().unwrap().to_string());
+    }
+    // guild info is for one guild and roles is an array in it so get the roles key
+
+    if let Some(id) = json.get("id") {
+        discord_id = id.as_str().unwrap().to_string();
+    }
+
+    println!("Guild ID: {}", guild_id);
+    println!("Discord ID: {}", discord_id);
+    println!("Roles: {:?}", roles);
+
+    Ok(HttpResponse::Ok().finish())
 }
